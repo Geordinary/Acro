@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabble Letter Animation</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        .letter {
+            font-size: 5rem;
+            font-weight: bold;
+            margin: 0 10px;
+            animation: fade 1s ease-out forwards;
+        }
+
+        .letter-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            width: 100%;
+            position: absolute;
+            top: 33%;
+        }
+
+        .input-container {
+            position: absolute;
+            top: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input {
+            font-size: 1.2rem;
+            padding: 5px 10px;
+            margin: 5px;
+            text-align: center; /* Center justify the text */
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 5px 10px;
+            margin: 5px;
+        }
+
+        #timer {
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+
+        .acro-list {
+            position: absolute;
+            bottom: 10%;
+            width: 80%;
+            text-align: center;
+        }
+
+        .acro-list p {
+            font-size: 1.2rem;
+            margin: 5px 0;
+        }
+
+        p {
+            margin: 5px 0 0 0;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="letter-container" id="letter-container"></div>
+    <div class="input-container" id="input-container">
+        <input type="text" id="sentence" placeholder="Enter your sentence" onkeypress="if(event.key === 'Enter') submitSentence()" />
+        <button onclick="submitSentence()">Submit</button>
+    </div>
+    <p id="message"></p>
+    <p id="timer"></p>
+    <button id="skip-button" style="display: none;" onclick="skipToNextAcronym()">Skip</button>
+    <div class="acro-list" id="acro-list"></div>
+    <script>
+        const letterFrequencies = {
+            'A': 9, 'B': 2, 'C': 2, 'D': 4, 'E': 12,
+            'F': 2, 'G': 3, 'H': 2, 'I': 9, 'J': 1,
+            'K': 1, 'L': 4, 'M': 2, 'N': 6, 'O': 8,
+            'P': 2, 'Q': 1, 'R': 6, 'S': 4, 'T': 6,
+            'U': 4, 'V': 2, 'W': 2, 'X': 1, 'Y': 2, 'Z': 1
+        };
+
+        const letters = Object.keys(letterFrequencies);
+        const colors = ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "pink", "lime"];
+
+        const weightedLetters = [];
+        for (let letter in letterFrequencies) {
+            for (let i = 0; i < letterFrequencies[letter]; i++) {
+                weightedLetters.push(letter);
+            }
+        }
+
+        let currentAcronymLength = 3;
+        let countdown = 60;
+        let timerInterval;
+
+        function getRandomLetter() {
+            const index = Math.floor(Math.random() * weightedLetters.length);
+            return weightedLetters[index];
+        }
+
+        function getRandomColor() {
+            const index = Math.floor(Math.random() * colors.length);
+            return colors[index];
+        }
+
+        function displayAcronym(length) {
+            const container = document.getElementById('letter-container');
+            container.innerHTML = '';
+
+            for (let i = 0; i < length; i++) {
+                const letter = document.createElement('div');
+                letter.className = 'letter';
+                letter.textContent = getRandomLetter();
+                letter.style.color = getRandomColor();
+                container.appendChild(letter);
+            }
+        }
+
+        function cycleAcronyms() {
+            clearInterval(timerInterval); // Clear previous countdown
+            const timer = document.getElementById('timer');
+            timer.textContent = ""; // Clear timer display
+
+            setTimeout(() => {
+                if (currentAcronymLength < 7) {
+                    currentAcronymLength++;
+                } else {
+                    currentAcronymLength = 3;
+                }
+                displayAcronym(currentAcronymLength);
+                startSubmitCountdown();
+
+                // Show input container and hide skip button
+                document.getElementById('input-container').style.display = "flex";
+                document.getElementById('skip-button').style.display = "none";
+            }, 10000); // Delay 10 seconds before showing the next acronym
+        }
+
+        function startSubmitCountdown() {
+            countdown = 60;
+            const timer = document.getElementById('timer');
+            timer.textContent = `Time to submit: ${countdown} seconds`;
+
+            timerInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    timer.textContent = `Time to submit: ${countdown} seconds`;
+                } else {
+                    clearInterval(timerInterval);
+                    document.getElementById('message').textContent = "TOO SLOW";
+                }
+            }, 1000);
+        }
+
+        function submitSentence() {
+            clearInterval(timerInterval); // Stop the submit countdown timer
+            const sentenceInput = document.getElementById('sentence');
+            const lettersContainer = document.getElementById('letter-container');
+            const message = document.getElementById('message');
+            const acroList = document.getElementById('acro-list');
+
+            const currentLetters = Array.from(lettersContainer.children).map(letter => letter.textContent);
+            const sentenceWords = sentenceInput.value.trim().split(' ');
+
+            if (sentenceWords.length !== currentLetters.length) {
+                message.textContent = `Your sentence must have exactly ${currentLetters.length} words.`;
+                return;
+            }
+
+            const acronym = sentenceWords.map(word => word.charAt(0).toUpperCase());
+
+            if (JSON.stringify(acronym) === JSON.stringify(currentLetters)) {
+                lettersContainer.innerHTML = ''; // Clear letters
+                sentenceWords.forEach(word => {
+                    const wordElement = document.createElement('div');
+                    wordElement.className = 'letter';
+                    wordElement.textContent = word;
+                    wordElement.style.color = getRandomColor();
+                    wordElement.style.margin = "0 10px";
+                    lettersContainer.appendChild(wordElement);
+                });
+                message.textContent = "";
+                sentenceInput.value = ""; // Clear the text box
+
+                // Prepend to the list of accepted acronyms
+                const listItem = document.createElement('p');
+                listItem.textContent = sentenceWords.join(' ');
+                acroList.insertBefore(listItem, acroList.firstChild);
+
+                // Hide input container and start next acronym countdown
+                document.getElementById('input-container').style.display = "none";
+                timer.textContent = `Time until next ACRO: 10 seconds`;
+                document.getElementById('skip-button').style.display = "inline-block";
+                cycleAcronyms();
+            } else {
+                message.textContent = "Those letters don't match.";
+            }
+        }
+
+        function skipToNextAcronym() {
+            clearInterval(timerInterval); // Clear timer and skip to the next acronym
+            cycleAcronyms();
+        }
+
+        displayAcronym(currentAcronymLength);
+        startSubmitCountdown();
+    </script>
